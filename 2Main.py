@@ -230,19 +230,23 @@ def CreateStructuredMask(rawMask, maskInterpreter):
 
 masks = []
 # Fragesätze
-masks = [("[Guten Tag]|Hi|[Grüß Gott]|Hallo| <Detail>", lambda library: print("Hallo"))]
-masks = masks + [("Ist <Detail> ein|eine|der|die|das| <Prädikat>?", lambda library: print("Called the correct function with {}".format(library)))]
-masks = masks + [("Sind <Detail> {,|und <Detail>}| und <Detail> ein|eine|der|die|das| <Prädikat>?", lambda library: print("Called the correct function with {}".format(library)))]
-masks = masks + [("Was ist <Detail>?", lambda library: print("Called the correct function with {}".format(library)))]
+# masks = [("[Guten Tag]|Hi|[Grüß Gott]|Hallo| <Detail>", lambda library: print("Hallo"))]
+masks = [("Hallo|Hi Welt!", lambda library: print("Hallo"))]
+#masks = masks + [("Ist <Detail> ein|eine|der|die|das| <Prädikat>?", lambda library: print("Called the correct function with {}".format(library)))]
+#masks = masks + [("Sind <Detail> {,|und <Detail>}| und <Detail> ein|eine|der|die|das| <Prädikat>?", lambda library: print("Called the correct function with {}".format(library)))]
+#masks = masks + [("Was ist <Detail>?", lambda library: print("Called the correct function with {}".format(library)))]
 # Aussagesätze
-masks = masks + [("<Detail> ist <Prädikat>.|", lambda library: print("Called the correct function with {}".format(library)))]
-masks = masks + [("<Detail> {,|und|oder <Detail>} sind <Prädikat>.|", lambda library: print("Called the correct function with {}".format(library)))]
-masks = masks + [("<Detail> {,|und|oder <Detail>} sind alle <Prädikat>.|", lambda library: print("Called the correct function with {}".format(library)))]
-masks = masks + [("<Detail> {,|und|oder <Prädikat>} sind wie <Prädikat>.|", lambda library: print("Called the correct function with {}".format(library)))]
+#masks = masks + [("<Detail> ist <Prädikat>.|", lambda library: print("Called the correct function with {}".format(library)))]
+#masks = masks + [("<Detail> {,|und|oder <Detail>} sind <Prädikat>.|", lambda library: print("Called the correct function with {}".format(library)))]
+#masks = masks + [("<Detail> {,|und|oder <Detail>} sind alle <Prädikat>.|", lambda library: print("Called the correct function with {}".format(library)))]
+#masks = masks + [("<Detail> {,|und|oder <Prädikat>} sind wie <Prädikat>.|", lambda library: print("Called the correct function with {}".format(library)))]
 
 maskInterpreter = {
     # Start and End Character need to be different in case of SubGroup
-    # type is a key word. Currently supported: subGroup, alternative, raw
+    # type is a key word. Currently supported: subGroup, arrayCollection, raw
+    # raw means stop character to store previous content into tree node
+    # subGroup means all content encapsulated in defined character are put into sub tree node and that content is reinterpreted
+    # arrayCollection means all symbols connected to that characters are assembled in an array in the node
     "<": { "type": "subGroup", "name": "object", "endCharacter": ">" },
     "{": { "type": "subGroup", "name": "repeatable", "endCharacter": "}" },
     "[": { "type": "subGroup", "name": "subSentence", "endCharacter": "]" },
@@ -250,7 +254,49 @@ maskInterpreter = {
     " ": { "type": "raw" }
 }
 
+def CreateLinearStructuredMask_Alternative(structured_mask, satzposition, preMarkPosition):
+    linearMaskResult = []
+    print("Creating Linear Structured Mask from {}".format(structured_mask))
+    idx = 0
+    for singleEntry in structured_mask:
+        if singleEntry[0] == 'raw':
+            linearMaskResult = linearMaskResult + [(singleEntry[1], {'pre': preMarkPosition, 'post': 'Last' if idx >= (len(structured_mask) - 1) else structured_mask[idx + 1][1], 'pos': idx})]
+        else:
+            if singleEntry[0] == 'alternative':
+                subLinearMaskResult, dummy = CreateLinearStructuredMask_Alternative(singleEntry[1], satzposition, preMarkPosition)
+            else:
+                subLinearMaskResult, dummy = CreateLinearStructuredMask(singleEntry[1], satzposition, preMarkPosition)
+            linearMaskResult = linearMaskResult + subLinearMaskResult
+        idx = idx + 1
+
+    return linearMaskResult, satzposition
+
+def CreateLinearStructuredMask(structured_mask, satzposition, preMarkPosition):
+    linearMaskResult = []
+    print("Creating Linear Structured Mask from {}".format(structured_mask))
+    idx = 0
+    for singleEntry in structured_mask:
+        if singleEntry[0] == 'raw':
+            linearMaskResult = linearMaskResult + [(singleEntry[1], {'pre': preMarkPosition, 'post': 'Last' if idx >= (len(structured_mask) - 1) else structured_mask[idx + 1][1], 'pos': idx})]
+            preMarkPosition = singleEntry[1]
+            satzposition = satzposition + 1
+        else:
+            if singleEntry[0] == 'alternative':
+                subLinearMaskResult, dummy = CreateLinearStructuredMask_Alternative(singleEntry[1], satzposition, preMarkPosition)
+            else:
+                subLinearMaskResult, dummy = CreateLinearStructuredMask(singleEntry[1], satzposition, preMarkPosition)
+            linearMaskResult = linearMaskResult + subLinearMaskResult
+        idx = idx + 1
+
+    return linearMaskResult, satzposition
+
 structured_mask = CreateStructuredMask(masks, maskInterpreter)
+linear_structured_mask = []
+
+for single_structured_mask in structured_mask:
+    linear_structured_mask = linear_structured_mask + CreateLinearStructuredMask(single_structured_mask[1], 0, 'First')[0]
+
+print("Final linear structured mask collection {}".format(linear_structured_mask))
 
 def CompareToMask(mask, sentence):
     return (False, {})
@@ -327,7 +373,7 @@ while continueAsking:
         DrawStructuredMaskTree(structured_mask[int(splitErg[1])][1], 0)
     else:
         foundMask = False
-        satz = list(filter(lambda a: a != '', erg.replace('?', ' ?').replace('.',' .').replace(',',' ,').split(" ")))
+        satz = list(filter(lambda a: a != '', erg.replace('?', ' ?').replace('!', ' !').replace('.',' .').replace(',',' ,').split(" ")))
         for singleMask in structured_mask:
             compResult = CompareToMask(singleMask[1], satz)
             if compResult[0]:
@@ -335,6 +381,5 @@ while continueAsking:
                 singleMask[0](compResult[1])
                 foundMask = True
                 break
-            if foundMask == False:
-                print("Wie bitte?")
-    #print("{}".format(erg))
+        if foundMask == False:
+            print("Wie bitte?")
