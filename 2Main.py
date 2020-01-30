@@ -231,8 +231,8 @@ def CreateStructuredMask(rawMask, maskInterpreter):
 masks = []
 # Fragesätze
 # masks = [("[Guten Tag]|Hi|[Grüß Gott]|Hallo| <Detail>", lambda library: print("Hallo"))]
-masks = [("Hallo|Hi Welt!", lambda library: print("Hallo"))]
-#masks = masks + [("Ist <Detail> ein|eine|der|die|das| <Prädikat>?", lambda library: print("Called the correct function with {}".format(library)))]
+masks = [("[Guten Tag]|Hallo|Hi| Welt!", lambda library: print("Hallo"))]
+masks = masks + [("Ist <Detail> ein|eine|der|die|das| <Prädikat>?", lambda library: print("Called the correct function with {}".format(library)))]
 #masks = masks + [("Sind <Detail> {,|und <Detail>}| und <Detail> ein|eine|der|die|das| <Prädikat>?", lambda library: print("Called the correct function with {}".format(library)))]
 #masks = masks + [("Was ist <Detail>?", lambda library: print("Called the correct function with {}".format(library)))]
 # Aussagesätze
@@ -254,47 +254,72 @@ maskInterpreter = {
     " ": { "type": "raw" }
 }
 
-def CreateLinearStructuredMask_Alternative(structured_mask, satzposition, preMarkPosition):
+def CreateLinearStructuredMask_subSentence(structured_mask, satzposition, preMarkPosition, g_postMarkPosition):
     linearMaskResult = []
     print("Creating Linear Structured Mask from {}".format(structured_mask))
     idx = 0
     for singleEntry in structured_mask:
+        postMarkPosition = g_postMarkPosition if idx >= (len(structured_mask) - 1) else [structured_mask[idx + 1][1]]
         if singleEntry[0] == 'raw':
-            linearMaskResult = linearMaskResult + [(singleEntry[1], {'pre': preMarkPosition, 'post': 'Last' if idx >= (len(structured_mask) - 1) else structured_mask[idx + 1][1], 'pos': idx})]
+            subLinearMaskResult = [(singleEntry[1], {'pre': preMarkPosition, 'post': postMarkPosition, 'pos': idx})]
+            preMarkPosition = [singleEntry[1]]
+            satzposition = satzposition + 1
+        elif singleEntry[0] == 'alternative':
+            subLinearMaskResult, preMarkPosition = CreateLinearStructuredMask_Alternative(singleEntry[1], satzposition, preMarkPosition, postMarkPosition)
+        elif singleEntry[0] == 'subSentence':
+            subLinearMaskResult, preMarkPosition = CreateLinearStructuredMask_subSentence(singleEntry[1], satzposition, preMarkPosition, postMarkPosition)
         else:
-            if singleEntry[0] == 'alternative':
-                subLinearMaskResult, dummy = CreateLinearStructuredMask_Alternative(singleEntry[1], satzposition, preMarkPosition)
-            else:
-                subLinearMaskResult, dummy = CreateLinearStructuredMask(singleEntry[1], satzposition, preMarkPosition)
-            linearMaskResult = linearMaskResult + subLinearMaskResult
+            subLinearMaskResult, dummy = CreateLinearStructuredMask(singleEntry[1], satzposition, preMarkPosition)
+        linearMaskResult = linearMaskResult + subLinearMaskResult
         idx = idx + 1
 
-    return linearMaskResult, satzposition
+    return linearMaskResult, preMarkPosition
+
+def CreateLinearStructuredMask_Alternative(structured_mask, satzposition, preMarkPosition, postMarkPosition):
+    linearMaskResult = []
+    idx = 0
+    returned_preMarkPosition = []
+    for singleEntry in structured_mask:
+        if singleEntry[0] == 'raw':
+            subLinearMaskResult = [(singleEntry[1], {'pre': preMarkPosition, 'post': postMarkPosition, 'pos': idx})]
+            returned_preMarkPosition = returned_preMarkPosition + [singleEntry[1]]
+        elif singleEntry[0] == 'alternative':
+            subLinearMaskResult, received_preMarkPosition = CreateLinearStructuredMask_Alternative(singleEntry[1], satzposition, preMarkPosition, postMarkPosition)
+            returned_preMarkPosition = returned_preMarkPosition + received_preMarkPosition
+        elif singleEntry[0] == 'subSentence':
+            subLinearMaskResult, received_preMarkPosition = CreateLinearStructuredMask_subSentence(singleEntry[1], satzposition, preMarkPosition, postMarkPosition)
+            returned_preMarkPosition = returned_preMarkPosition + received_preMarkPosition
+        else:
+            subLinearMaskResult, dummy = CreateLinearStructuredMask(singleEntry[1], satzposition, preMarkPosition)
+        linearMaskResult = linearMaskResult + subLinearMaskResult
+        idx = idx + 1
+    return linearMaskResult, returned_preMarkPosition
 
 def CreateLinearStructuredMask(structured_mask, satzposition, preMarkPosition):
     linearMaskResult = []
     print("Creating Linear Structured Mask from {}".format(structured_mask))
     idx = 0
     for singleEntry in structured_mask:
+        postMarkPosition = ['Last'] if idx >= (len(structured_mask) - 1) else [structured_mask[idx + 1][1]]
         if singleEntry[0] == 'raw':
-            linearMaskResult = linearMaskResult + [(singleEntry[1], {'pre': preMarkPosition, 'post': 'Last' if idx >= (len(structured_mask) - 1) else structured_mask[idx + 1][1], 'pos': idx})]
-            preMarkPosition = singleEntry[1]
+            subLinearMaskResult = [(singleEntry[1], {'pre': preMarkPosition, 'post': postMarkPosition, 'pos': idx})]
+            preMarkPosition = [singleEntry[1]]
             satzposition = satzposition + 1
+        elif singleEntry[0] == 'alternative':
+            subLinearMaskResult, preMarkPosition = CreateLinearStructuredMask_Alternative(singleEntry[1], satzposition, preMarkPosition, postMarkPosition)
+        elif singleEntry[0] == 'subSentence':
+            subLinearMaskResult, preMarkPosition = CreateLinearStructuredMask_subSentence(singleEntry[1], satzposition, preMarkPosition, postMarkPosition)
         else:
-            if singleEntry[0] == 'alternative':
-                subLinearMaskResult, dummy = CreateLinearStructuredMask_Alternative(singleEntry[1], satzposition, preMarkPosition)
-            else:
-                subLinearMaskResult, dummy = CreateLinearStructuredMask(singleEntry[1], satzposition, preMarkPosition)
-            linearMaskResult = linearMaskResult + subLinearMaskResult
+            subLinearMaskResult, dummy = CreateLinearStructuredMask(singleEntry[1], satzposition, preMarkPosition)
+        linearMaskResult = linearMaskResult + subLinearMaskResult
         idx = idx + 1
-
     return linearMaskResult, satzposition
 
 structured_mask = CreateStructuredMask(masks, maskInterpreter)
 linear_structured_mask = []
 
 for single_structured_mask in structured_mask:
-    linear_structured_mask = linear_structured_mask + CreateLinearStructuredMask(single_structured_mask[1], 0, 'First')[0]
+    linear_structured_mask = linear_structured_mask + CreateLinearStructuredMask(single_structured_mask[1], 0, ['First'])[0]
 
 print("Final linear structured mask collection {}".format(linear_structured_mask))
 
