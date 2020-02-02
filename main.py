@@ -30,6 +30,7 @@ def GetOrigPredicate(predicate):
     return retVal
 
 def AddDetailToPredicate(detail, predicate):
+    retVal = ""
     global predicates
     if type(detail) == str:
         detail = [detail]
@@ -40,12 +41,16 @@ def AddDetailToPredicate(detail, predicate):
         for subdetail in detail:
             if subdetail in predicates[predicate]:
                 print('Ja das weiß ich')
+                retVal = retVal + "Ja das weiß ich" + "\n"
             else:
                 predicates[predicate] = predicates[predicate] + [subdetail]
+                retVal = retVal + "Verstanden" + "\n"
     else:
         print('Prädikat {} unbekannt'.format(predicate))
         predicates[predicate] = detail
         print('Prädikat wurde hinzugefügt')
+        retVal = retVal + "Verstanden" + "\n"
+    return retVal
         
 def AddDetailToPredicateGrouped(detail, predicate):
     global predicates
@@ -233,16 +238,16 @@ def CreateStructuredMask(rawMask, maskInterpreter):
 
 masks = []
 # Fragesätze
-masks = [("[Guten Tag]|Hi|[Grüß Gott]|Hallo| <Detail>!|.|", lambda library: print("Hallo"))]
-masks = masks + [("Aber|Und| Ist|ist ein|eine|der|die|das| <Detail> ein|eine|der|die|das| <Prädikat>?", lambda library: print("{}".format(CheckDetailsInPredicate(library["Detail"], library["Prädikat"][0]))) )]
-masks = masks + [("Sind <Detail> {,|und <Detail>}| und <Detail> ein|eine|der|die|das| <Prädikat>?", lambda library: print("{}".format(CheckDetailsInPredicate(library["Detail"], library["Prädikat"][0]))) )]
-masks = masks + [("Was ist ein|eine|der|die|das| <Detail>?", lambda library: print("{} ist {}".format(library["Detail"][0], GetPredicateFromDetail(library["Detail"][0]))) )]
+masks = [("[Guten Tag]|Hi|[Grüß Gott]|Hallo| <Detail>!|.|", lambda library: "Hallo")]
+masks = masks + [("Aber|Und| Ist|ist ein|eine|der|die|das| <Detail> ein|eine|der|die|das| <Prädikat>?", lambda library: CheckDetailsInPredicate(library["Detail"], library["Prädikat"][0]) )]
+masks = masks + [("Sind <Detail> {,|und <Detail>}| und <Detail> ein|eine|der|die|das| <Prädikat>?", lambda library: CheckDetailsInPredicate(library["Detail"], library["Prädikat"][0]) )]
+masks = masks + [("Was ist ein|eine|der|die|das| <Detail>?", lambda library: "{} ist {}".format(library["Detail"][0], GetPredicateFromDetail(library["Detail"][0])) )]
 # Aussagesätze
-masks = masks + [("<Detail> ist ein|eine|der|die|das| <Prädikat>.|", lambda library: print("{}".format(AddDetailToPredicate(library["Detail"][0], library["Prädikat"][0]))) )]
-masks = masks + [("<Detail> {,|und|oder <Detail>} sind ein|eine|der|die|das| <Prädikat>.|", lambda library: print("{}".format(AddDetailToPredicateGrouped(library["Detail"], library["Prädikat"][0]))) )]
-masks = masks + [("<Detail> {,|und|oder <Detail>} sind alle ein|eine|der|die|das| <Prädikat>.|", lambda library: print("{}".format(AddDetailToPredicate(library["Detail"], library["Prädikat"][0]))) )]
-masks = masks + [("<Prädikat> {,|und|oder <Prädikat>} sind wie ein|eine|der|die|das| <OrigPrädikat>.|", lambda library: print("{}".format(AddEqualsPredicate(library["Prädikat"], library["OrigPrädikat"][0]))) )]
-masks = masks + [("<Prädikat> ist wie ein|eine|der|die|das| <OrigPrädikat>.|", lambda library: print("{}".format(AddEqualsPredicate(library["Prädikat"], library["OrigPrädikat"][0]))) )]
+masks = masks + [("<Detail> ist ein|eine|der|die|das| <Prädikat>.|", lambda library: AddDetailToPredicate(library["Detail"][0], library["Prädikat"][0]) )]
+masks = masks + [("<Detail> {,|und|oder <Detail>} sind ein|eine|der|die|das| <Prädikat>.|", lambda library: AddDetailToPredicateGrouped(library["Detail"], library["Prädikat"][0]) )]
+masks = masks + [("<Detail> {,|und|oder <Detail>} sind alle ein|eine|der|die|das| <Prädikat>.|", lambda library: AddDetailToPredicate(library["Detail"], library["Prädikat"][0]) )]
+masks = masks + [("<Prädikat> {,|und|oder <Prädikat>} sind wie ein|eine|der|die|das| <OrigPrädikat>.|", lambda library: AddEqualsPredicate(library["Prädikat"], library["OrigPrädikat"][0]) )]
+masks = masks + [("<Prädikat> ist wie ein|eine|der|die|das| <OrigPrädikat>.|", lambda library: AddEqualsPredicate(library["Prädikat"], library["OrigPrädikat"][0]) )]
 
 maskInterpreter = {
     # Start and End Character need to be different in case of SubGroup
@@ -345,12 +350,8 @@ def startConsoleInterface():
         if erg == 'q':
             print('End of Programm')
             continueAsking = False
-        else:
-            ProcessNewInput(erg)
-
-def ProcessNewInput(erg):
-    if erg == 'h':
-        print('''
+        elif erg == 'h':
+            print('''
         	      lp - Liste aller Prädikate
         	      leqp - Liste aller equal Prädikate
         	      p - Neues Prädikat
@@ -362,48 +363,69 @@ def ProcessNewInput(erg):
         	      h - Hilfe
         	      q - Beenden
         	      ''')
-    elif erg == 'p':
-        new_predicate = input('Gib das neue Prädikat ein: ')
-        AddDetailToPredicate([], new_predicate)
-        print('Neues Prädikat {} wurde hinzugefügt'.format(new_predicate))
-    elif erg == 'lp':
-        print('{}'.format(predicates))
-    elif erg == 'leqp':
-        print('{}'.format(predicate_equals))
-    elif erg == 'f':
-        new_function = input('Gib die neue Funktion ein:')
-        functions = functions + [new_function]
-        print('Neue Formel {} wurde hinzugefügt'.format(new_function))
-    elif erg == 'lf':
-        print('{}'.format(functions))
-    elif erg == 'lm':
-        print('{}'.format(masks))
-    elif erg.startswith('lm '):
-        splitErg = erg.split(" ")
-        print('{}'.format(masks[int(splitErg[1])]))
-    elif erg == 'lsm':
-        print('{}'.format(structured_mask))
-    elif erg.startswith('lsm '):
-        splitErg = erg.split(" ")
-        print('{}'.format(structured_mask[int(splitErg[1])]))
-    elif erg.startswith('dsm '):
-        splitErg = erg.split(" ")
-        DrawStructuredMaskTree(structured_mask[int(splitErg[1])][1], 0)
-    else:
+        elif erg == 'p':
+            new_predicate = input('Gib das neue Prädikat ein: ')
+            AddDetailToPredicate([], new_predicate)
+            print('Neues Prädikat {} wurde hinzugefügt'.format(new_predicate))
+        elif erg == 'lp':
+            print('{}'.format(predicates))
+        elif erg == 'leqp':
+            print('{}'.format(predicate_equals))
+        elif erg == 'f':
+            new_function = input('Gib die neue Funktion ein:')
+            functions = functions + [new_function]
+            print('Neue Formel {} wurde hinzugefügt'.format(new_function))
+        elif erg == 'lf':
+            print('{}'.format(functions))
+        elif erg == 'lm':
+            print('{}'.format(masks))
+        elif erg.startswith('lm '):
+            splitErg = erg.split(" ")
+            print('{}'.format(masks[int(splitErg[1])]))
+        elif erg == 'lsm':
+            print('{}'.format(structured_mask))
+        elif erg.startswith('lsm '):
+            splitErg = erg.split(" ")
+            print('{}'.format(structured_mask[int(splitErg[1])]))
+        elif erg.startswith('dsm '):
+            splitErg = erg.split(" ")
+            DrawStructuredMaskTree(structured_mask[int(splitErg[1])][1], 0)
+        else:
+            ProcessNewInput(erg)
+
+def ProcessNewInput(erg):
         foundMask = False
         satz = list(filter(lambda a: a != '', erg.replace('?', ' ?').replace('!', ' !').replace('.',' .').replace(',',' ,').split(" ")))
         for singleMask in structured_mask:
             compResult = CompareToMask(singleMask[1], satz, {})
             if compResult[0]:
                 print("Satz passt zur Maske: {} mit Ergebnis: {}".format(singleMask, compResult))
-                singleMask[0](compResult[1])
+                result = singleMask[0](compResult[1])
+                print("{}".format(result))
+                return result
                 foundMask = True
                 break
         if foundMask == False:
             print("Wie bitte?")
+            return "Wie bitte?"
+
+from flask import Flask, request, jsonify
+app = Flask(__name__)
+
+@app.route('/')
+def centralRouting():
+    return 'ExSyNL Flask Server'
+
+@app.route('/talk/<talkid>', methods=['PUT'])
+def AddInput(talkid):
+    if 'PUT' == request.method:
+        print("Found PUT request")
+        content = request.json
+        print("Received request {}".format(content))
+        return jsonify({"answer": ProcessNewInput(content["newInput"])})
 
 if __name__ == "__main__":
     if configuration["RunMode"] == "Console":
         startConsoleInterface()
     elif configuration["RunMode"] == "Flask":
-        pass
+        app.run(debug=True, port=5957)
