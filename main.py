@@ -237,8 +237,11 @@ def CreateStructuredMask(rawMask, maskInterpreter):
 # {} Kann sich beliebig oft wiederholen (z.B. {})
 
 masks = []
+# Smalltalk
+masks = masks + [("[Guten Tag]|Hi|[Grüß Gott]|Hallo| <Detail>!|.|", lambda library: "Hallo")]
+masks = masks + [("[Wie geht es Dir heute| ]|[Wie gehts|geht's] ?", lambda library: "Danke Gut :)")]
+
 # Fragesätze
-masks = [("[Guten Tag]|Hi|[Grüß Gott]|Hallo| <Detail>!|.|", lambda library: "Hallo")]
 masks = masks + [("Aber|Und| Ist|ist ein|eine|der|die|das| <Detail> ein|eine|der|die|das| <Prädikat>?", lambda library: CheckDetailsInPredicate(library["Detail"], library["Prädikat"][0]) )]
 masks = masks + [("Sind <Detail> {,|und <Detail>}| und <Detail> ein|eine|der|die|das| <Prädikat>?", lambda library: CheckDetailsInPredicate(library["Detail"], library["Prädikat"][0]) )]
 masks = masks + [("Was ist ein|eine|der|die|das| <Detail>?", lambda library: "{} ist {}".format(library["Detail"][0], GetPredicateFromDetail(library["Detail"][0])) )]
