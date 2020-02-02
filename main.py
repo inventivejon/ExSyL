@@ -1,16 +1,5 @@
 import copy
 
-# Prädikate
-# Mann
-# Frau
-# Ehepaar
-
-# Formel
-# Mann(X)
-# Frau(Y)
-# Ehepaar(X, Y)
-
-continueAsking = True
 predicates = {}
 predicate_equals = {}
 functions = []
@@ -37,10 +26,17 @@ def GetOrigPredicate(predicate):
 
 def AddDetailToPredicate(detail, predicate):
     global predicates
+    if type(detail) == str:
+        detail = [detail]
     predicate = GetOrigPredicate(predicate)
     if predicate in predicates:
         print('Prädikat gefunden')
-        predicates[predicate] = predicates[predicate] + detail
+        print('Prüfe ob Wissen bereits vorhanden.')
+        for subdetail in detail:
+            if subdetail in predicates[predicate]:
+                print('Ja das weiß ich')
+            else:
+                predicates[predicate] = predicates[predicate] + [subdetail]
     else:
         print('Prädikat {} unbekannt'.format(predicate))
         predicates[predicate] = detail
@@ -233,15 +229,15 @@ def CreateStructuredMask(rawMask, maskInterpreter):
 masks = []
 # Fragesätze
 masks = [("[Guten Tag]|Hi|[Grüß Gott]|Hallo| <Detail>!|.|", lambda library: print("Hallo"))]
-masks = masks + [("Ist <Detail> ein|eine|der|die|das| <Prädikat>?", lambda library: print("Called the correct function with {}".format(library)))]
-masks = masks + [("Sind <Detail> {,|und <Detail>}| und <Detail> ein|eine|der|die|das| <Prädikat>?", lambda library: print("Called the correct function with {}".format(library)))]
-masks = masks + [("Was ist ein|eine|der|die|das| <Detail>?", lambda library: print("Called the correct function with {}".format(library)))]
+masks = masks + [("Aber|Und| Ist|ist ein|eine|der|die|das| <Detail> ein|eine|der|die|das| <Prädikat>?", lambda library: print("{}".format(CheckDetailsInPredicate(library["Detail"], library["Prädikat"][0]))) )]
+masks = masks + [("Sind <Detail> {,|und <Detail>}| und <Detail> ein|eine|der|die|das| <Prädikat>?", lambda library: print("{}".format(CheckDetailsInPredicate(library["Detail"], library["Prädikat"][0]))) )]
+masks = masks + [("Was ist ein|eine|der|die|das| <Detail>?", lambda library: print("{} ist {}".format(library["Detail"][0], GetPredicateFromDetail(library["Detail"][0]))) )]
 # Aussagesätze
-masks = masks + [("<Detail> ist <Prädikat>.|", lambda library: print("Called the correct function with {}".format(library)))]
-masks = masks + [("<Detail> {,|und|oder <Detail>} sind <Prädikat>.|", lambda library: print("Called the correct function with {}".format(library)))]
-masks = masks + [("<Detail> {,|und|oder <Detail>} sind alle <Prädikat>.|", lambda library: print("Called the correct function with {}".format(library)))]
-masks = masks + [("<Prädikat> {,|und|oder <Prädikat>} sind wie <Prädikat>.|", lambda library: print("Called the correct function with {}".format(library)))]
-masks = masks + [("<Prädikat> ist wie <Prädikat>.|", lambda library: print("Called the correct function with {}".format(library)))]
+masks = masks + [("<Detail> ist ein|eine|der|die|das| <Prädikat>.|", lambda library: print("{}".format(AddDetailToPredicate(library["Detail"][0], library["Prädikat"][0]))) )]
+masks = masks + [("<Detail> {,|und|oder <Detail>} sind ein|eine|der|die|das| <Prädikat>.|", lambda library: print("{}".format(AddDetailToPredicateGrouped(library["Detail"], library["Prädikat"][0]))) )]
+masks = masks + [("<Detail> {,|und|oder <Detail>} sind alle ein|eine|der|die|das| <Prädikat>.|", lambda library: print("{}".format(AddDetailToPredicate(library["Detail"], library["Prädikat"][0]))) )]
+masks = masks + [("<Prädikat> {,|und|oder <Prädikat>} sind wie ein|eine|der|die|das| <OrigPrädikat>.|", lambda library: print("{}".format(AddEqualsPredicate(library["Prädikat"], library["OrigPrädikat"][0]))) )]
+masks = masks + [("<Prädikat> ist wie ein|eine|der|die|das| <OrigPrädikat>.|", lambda library: print("{}".format(AddEqualsPredicate(library["Prädikat"], library["OrigPrädikat"][0]))) )]
 
 maskInterpreter = {
     # Start and End Character need to be different in case of SubGroup
@@ -334,13 +330,21 @@ def DrawStructuredMaskTree(structuredMask, level):
         else:
             print("{}|{}".format(realIndent, singleEntry[1]))
         entryCounter = entryCounter + 1
-while continueAsking:
-    erg = input('Tippe etwas ein (q,h): ')
-    
-    if erg == 'q':
-        print('End of Programm')
-        continueAsking = False
-    elif erg == 'h':
+
+def startConsoleInterface():
+    continueAsking = True
+
+    while continueAsking:
+        erg = input('Tippe etwas ein (q,h): ')
+
+        if erg == 'q':
+            print('End of Programm')
+            continueAsking = False
+        else:
+            ProcessNewInput(erg)
+
+def ProcessNewInput(erg):
+    if erg == 'h':
         print('''
         	      lp - Liste aller Prädikate
         	      leqp - Liste aller equal Prädikate
@@ -373,7 +377,6 @@ while continueAsking:
         splitErg = erg.split(" ")
         print('{}'.format(masks[int(splitErg[1])]))
     elif erg == 'lsm':
-        value = erg.split(" ")
         print('{}'.format(structured_mask))
     elif erg.startswith('lsm '):
         splitErg = erg.split(" ")
@@ -393,3 +396,6 @@ while continueAsking:
                 break
         if foundMask == False:
             print("Wie bitte?")
+
+if __name__ == "__main__":
+    startConsoleInterface()
