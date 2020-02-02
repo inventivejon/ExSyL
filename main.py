@@ -1,4 +1,9 @@
 import copy
+import json
+
+with open('config.json') as json_data_file:
+    configuration = json.load(json_data_file)
+print("Reading config: {}".format(configuration))
 
 predicates = {}
 predicate_equals = {}
@@ -398,4 +403,7 @@ def ProcessNewInput(erg):
             print("Wie bitte?")
 
 if __name__ == "__main__":
-    startConsoleInterface()
+    if configuration["RunMode"] == "Console":
+        startConsoleInterface()
+    elif configuration["RunMode"] == "Flask":
+        pass
