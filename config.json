@@ -1,3 +1,5 @@
 {
-    "RunMode": "Flask"
+    "RunMode": "Flask",
+    "Debug": true,
+    "Port": 5957
 }

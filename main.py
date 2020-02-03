@@ -1,5 +1,6 @@
 import copy
 import json
+import re
 
 with open('config.json') as json_data_file:
     configuration = json.load(json_data_file)
@@ -397,20 +398,19 @@ def startConsoleInterface():
             ProcessNewInput(erg)
 
 def ProcessNewInput(erg):
-        foundMask = False
         satz = list(filter(lambda a: a != '', erg.replace('?', ' ?').replace('!', ' !').replace('.',' .').replace(',',' ,').split(" ")))
         for singleMask in structured_mask:
             compResult = CompareToMask(singleMask[1], satz, {})
             if compResult[0]:
                 print("Satz passt zur Maske: {} mit Ergebnis: {}".format(singleMask, compResult))
                 result = singleMask[0](compResult[1])
-                print("{}".format(result))
-                return result
-                foundMask = True
-                break
-        if foundMask == False:
-            print("Wie bitte?")
-            return "Wie bitte?"
+                return dprint(result)
+        return dprint("Wie bitte?")
+
+def dprint(input):
+    strinput = "{}".format(input)
+    print(strinput)
+    return strinput
 
 from flask import Flask, request, jsonify
 app = Flask(__name__)
@@ -423,12 +423,15 @@ def centralRouting():
 def AddInput(talkid):
     if 'PUT' == request.method:
         print("Found PUT request")
-        content = request.json
-        print("Received request {}".format(content))
-        return jsonify({"answer": ProcessNewInput(content["newInput"])})
+        content = request.json["newInput"]
+        isvalid = re.match(r'[a-zA-Z0-9-_\s\.\!\?\"\'\§\$\€\@\;\:\,_\^\°\%\&\)\( ß]+$', content)
+        if isvalid:
+            return jsonify({"answer": ProcessNewInput(content)})
+        else:
+            return jsonify({"answer": "Deine Anfrage enthält Zeichen die ich nicht erlaube. Bitte drücke Dich höflicher aus."})
 
 if __name__ == "__main__":
     if configuration["RunMode"] == "Console":
         startConsoleInterface()
     elif configuration["RunMode"] == "Flask":
-        app.run(debug=True, port=5957)
+        app.run(debug=configuration["Debug"], port=configuration["Port"])
