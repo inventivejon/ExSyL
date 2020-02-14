@@ -1450,6 +1450,13 @@
   resolved "https://registry.yarnpkg.com/@types/q/-/q-1.5.2.tgz#690a1475b84f2a884fd07cd797c00f5f31356ea8"
   integrity sha512-ce5d3q03Ex0sy4R14722Rmt6MT07Ua+k4FwDfdcToYJcMKNtRVQvJ6JCAPdAmAnbRb6CsX6aYb9m96NGod9uTw==
 
+"@types/react-chat-widget@^2.1.0":
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/@types/react-chat-widget/-/react-chat-widget-2.1.0.tgz#efbd07255ce88466d58eccb33325bc62113c2a5f"
+  integrity sha512-jLja4+64yPA0c++QMzjWLnBXarm0p6zlRSE7VOZQ1Fbywg3qYOshARSj6URC+ZPqT6lKIbCZNRUh4pkmFnZ8JQ==
+  dependencies:
+    "@types/react" "*"
+
 "@types/react-dom@*", "@types/react-dom@^16.9.0":
   version "16.9.5"
   resolved "https://registry.yarnpkg.com/@types/react-dom/-/react-dom-16.9.5.tgz#5de610b04a35d07ffd8f44edad93a71032d9aaa7"
